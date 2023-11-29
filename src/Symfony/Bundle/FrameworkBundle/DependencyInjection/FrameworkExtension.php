@@ -1312,6 +1312,8 @@ class FrameworkExtension extends Extension
             $container->removeDefinition('asset_mapper.asset_package');
         }
 
+        $container->setAlias('asset_mapper.importmap.config_reader', $config['config_reader_id']);
+
         $paths = $config['paths'];
         foreach ($container->getParameter('kernel.bundles_metadata') as $name => $bundle) {
             if ($container->fileExists($dir = $bundle['path'].'/Resources/public') || $container->fileExists($dir = $bundle['path'].'/public')) {
@@ -1354,6 +1356,12 @@ class FrameworkExtension extends Extension
         $container->getDefinition('asset_mapper.compiler.javascript_import_path_compiler')
             ->setArgument(1, $config['missing_import_mode']);
 
+        $container->getDefinition('asset_mapper.compiler.javascript_css_urls_compiler')
+            ->setArgument(0, $config['importmap_path']);
+
+        $container->getDefinition('asset_mapper.compiler.javascript_asset_urls_compiler')
+            ->setArgument(0, $config['importmap_path']);
+
         $container
             ->getDefinition('asset_mapper.importmap.remote_package_storage')
             ->replaceArgument(0, $config['vendor_dir'])
@@ -1364,7 +1372,12 @@ class FrameworkExtension extends Extension
         ;
 
         $container
-            ->getDefinition('asset_mapper.importmap.config_reader')
+            ->getDefinition('asset_mapper.importmap.config_reader.default')
+            ->replaceArgument(0, $config['importmap_path'])
+        ;
+
+        $container
+            ->getDefinition('asset_mapper.importmap.config_reader.manifest')
             ->replaceArgument(0, $config['importmap_path'])
         ;
 

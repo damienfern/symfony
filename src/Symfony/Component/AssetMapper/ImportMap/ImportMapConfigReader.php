@@ -20,7 +20,7 @@ use Symfony\Component\VarExporter\VarExporter;
  *
  * @author Ryan Weaver <ryan@symfonycasts.com>
  */
-class ImportMapConfigReader
+class ImportMapConfigReader implements ImportMapConfigReaderInterface
 {
     private ImportMapEntries $rootImportMapEntries;
 
@@ -40,8 +40,9 @@ class ImportMapConfigReader
         $importMapConfig = is_file($this->importMapConfigPath) ? (static fn () => include $configPath)() : [];
 
         $entries = new ImportMapEntries();
+        $validKeys = ['path', 'version', 'type', 'entrypoint', 'package_specifier'];
+
         foreach ($importMapConfig ?? [] as $importName => $data) {
-            $validKeys = ['path', 'version', 'type', 'entrypoint', 'package_specifier'];
             if ($invalidKeys = array_diff(array_keys($data), $validKeys)) {
                 throw new \InvalidArgumentException(sprintf('The following keys are not valid for the importmap entry "%s": "%s". Valid keys are: "%s".', $importName, implode('", "', $invalidKeys), implode('", "', $validKeys)));
             }
@@ -169,7 +170,7 @@ class ImportMapConfigReader
         return './'.str_replace('\\', '/', substr($filesystemPath, \strlen($rootImportMapDir) + 1));
     }
 
-    private function getRootDirectory(): string
+    public function getRootDirectory(): string
     {
         return \dirname($this->importMapConfigPath);
     }

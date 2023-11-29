@@ -26,6 +26,8 @@ use Symfony\Component\AssetMapper\Command\ImportMapRequireCommand;
 use Symfony\Component\AssetMapper\Command\ImportMapUpdateCommand;
 use Symfony\Component\AssetMapper\CompiledAssetMapperConfigReader;
 use Symfony\Component\AssetMapper\Compiler\CssAssetUrlCompiler;
+use Symfony\Component\AssetMapper\Compiler\JavascriptAssetUrlCompiler;
+use Symfony\Component\AssetMapper\Compiler\JavascriptCSSUrlComplier;
 use Symfony\Component\AssetMapper\Compiler\JavaScriptImportPathCompiler;
 use Symfony\Component\AssetMapper\Compiler\SourceMappingUrlsCompiler;
 use Symfony\Component\AssetMapper\Factory\CachedMappedAssetFactory;
@@ -34,6 +36,7 @@ use Symfony\Component\AssetMapper\ImportMap\ImportMapAuditor;
 use Symfony\Component\AssetMapper\ImportMap\ImportMapConfigReader;
 use Symfony\Component\AssetMapper\ImportMap\ImportMapGenerator;
 use Symfony\Component\AssetMapper\ImportMap\ImportMapManager;
+use Symfony\Component\AssetMapper\ImportMap\ImportMapManifestConfigReader;
 use Symfony\Component\AssetMapper\ImportMap\ImportMapRenderer;
 use Symfony\Component\AssetMapper\ImportMap\ImportMapUpdateChecker;
 use Symfony\Component\AssetMapper\ImportMap\ImportMapVersionChecker;
@@ -143,6 +146,19 @@ return static function (ContainerConfigurator $container) {
             ->tag('asset_mapper.compiler')
             ->tag('monolog.logger', ['channel' => 'asset_mapper'])
 
+
+        ->set('asset_mapper.compiler.javascript_css_urls_compiler', JavascriptCSSUrlComplier::class)
+        ->args([
+            abstract_arg('manifest.json path')
+        ])
+        ->tag('asset_mapper.compiler')
+
+        ->set('asset_mapper.compiler.javascript_asset_urls_compiler', JavascriptAssetUrlCompiler::class)
+        ->args([
+            abstract_arg('manifest.json path')
+        ])
+        ->tag('asset_mapper.compiler')
+
         ->set('asset_mapper.compiler.source_mapping_urls_compiler', SourceMappingUrlsCompiler::class)
             ->tag('asset_mapper.compiler')
 
@@ -155,10 +171,15 @@ return static function (ContainerConfigurator $container) {
             ->tag('asset_mapper.compiler')
             ->tag('monolog.logger', ['channel' => 'asset_mapper'])
 
-        ->set('asset_mapper.importmap.config_reader', ImportMapConfigReader::class)
+        ->set('asset_mapper.importmap.config_reader.default', ImportMapConfigReader::class)
             ->args([
                 abstract_arg('importmap.php path'),
                 service('asset_mapper.importmap.remote_package_storage'),
+            ])
+
+        ->set('asset_mapper.importmap.config_reader.manifest', ImportMapManifestConfigReader::class)
+            ->args([
+                abstract_arg('manifest.json path')
             ])
 
         ->set('asset_mapper.importmap.manager', ImportMapManager::class)
