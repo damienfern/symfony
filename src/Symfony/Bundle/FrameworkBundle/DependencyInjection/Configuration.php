@@ -29,6 +29,7 @@ use Symfony\Component\Form\Form;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizerInterface;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\HttpFoundation\Cookie;
+use Symfony\Component\HttpFoundation\IpUtils;
 use Symfony\Component\Lock\Lock;
 use Symfony\Component\Lock\Store\SemaphoreStore;
 use Symfony\Component\Mailer\Mailer;
@@ -111,7 +112,12 @@ class Configuration implements ConfigurationInterface
                     ->beforeNormalization()->ifString()->then(fn ($v) => [$v])->end()
                     ->prototype('scalar')->end()
                 ->end()
-                ->scalarNode('trusted_proxies')->end()
+                ->scalarNode('trusted_proxies')
+                    ->beforeNormalization()
+                        ->ifTrue(fn ($v) => 'private_ranges' === $v)
+                        ->then(fn ($v) => implode(',', IpUtils::PRIVATE_SUBNETS))
+                    ->end()
+                ->end()
                 ->arrayNode('trusted_headers')
                     ->fixXmlConfig('trusted_header')
                     ->performNoDeepMerging()
@@ -435,7 +441,7 @@ class Configuration implements ConfigurationInterface
                                                     if (!\is_string($value)) {
                                                         return true;
                                                     }
-                                                    if (class_exists(WorkflowEvents::class) && !\in_array($value, WorkflowEvents::ALIASES)) {
+                                                    if (class_exists(WorkflowEvents::class) && !\in_array($value, WorkflowEvents::ALIASES, true)) {
                                                         return true;
                                                     }
                                                 }
@@ -613,7 +619,10 @@ class Configuration implements ConfigurationInterface
                     ->children()
                         ->scalarNode('resource')->isRequired()->end()
                         ->scalarNode('type')->end()
-                        ->scalarNode('cache_dir')->defaultValue('%kernel.cache_dir%')->end()
+                        ->scalarNode('cache_dir')
+                            ->defaultValue('%kernel.build_dir%')
+                            ->setDeprecated('symfony/framework-bundle', '7.1', 'Setting the "%path%.%node%" configuration option is deprecated. It will be removed in version 8.0.')
+                        ->end()
                         ->scalarNode('default_uri')
                             ->info('The default URI used to generate URLs in a non-HTTP context')
                             ->defaultNull()

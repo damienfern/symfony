@@ -28,6 +28,10 @@ class UnsupportedSchemeException extends LogicException
             'class' => Bridge\Bandwidth\BandwidthTransportFactory::class,
             'package' => 'symfony/bandwidth-notifier',
         ],
+        'bluesky' => [
+            'class' => Bridge\Bluesky\BlueskyTransportFactory::class,
+            'package' => 'symfony/bluesky-notifier',
+        ],
         'brevo' => [
             'class' => Bridge\Brevo\BrevoTransportFactory::class,
             'package' => 'symfony/brevo-notifier',
@@ -212,6 +216,10 @@ class UnsupportedSchemeException extends LogicException
             'class' => Bridge\Sendberry\SendberryTransportFactory::class,
             'package' => 'symfony/sendberry-notifier',
         ],
+        'sevenio' => [
+            'class' => Bridge\Sevenio\SevenIoTransportFactory::class,
+            'package' => 'symfony/sevenio-notifier',
+        ],
         'simpletextin' => [
             'class' => Bridge\SimpleTextin\SimpleTextinTransportFactory::class,
             'package' => 'symfony/simple-textin-notifier',
@@ -236,6 +244,10 @@ class UnsupportedSchemeException extends LogicException
             'class' => Bridge\SmsBiuras\SmsBiurasTransportFactory::class,
             'package' => 'symfony/sms-biuras-notifier',
         ],
+        'smsbox' => [
+            'class' => Bridge\Smsbox\SmsboxTransportFactory::class,
+            'package' => 'symfony/smsbox-notifier',
+        ],
         'smsc' => [
             'class' => Bridge\Smsc\SmscTransportFactory::class,
             'package' => 'symfony/smsc-notifier',
@@ -247,6 +259,10 @@ class UnsupportedSchemeException extends LogicException
         'smsmode' => [
             'class' => Bridge\Smsmode\SmsmodeTransportFactory::class,
             'package' => 'symfony/smsmode-notifier',
+        ],
+        'sms-sluzba' => [
+            'class' => Bridge\SmsSluzba\SmsSluzbaTransportFactory::class,
+            'package' => 'symfony/sms-sluzba-notifier',
         ],
         'sns' => [
             'class' => Bridge\AmazonSns\AmazonSnsTransportFactory::class,
@@ -279,6 +295,10 @@ class UnsupportedSchemeException extends LogicException
         'twitter' => [
             'class' => Bridge\Twitter\TwitterTransportFactory::class,
             'package' => 'symfony/twitter-notifier',
+        ],
+        'unifonic' => [
+            'class' => Bridge\Unifonic\UnifonicTransportFactory::class,
+            'package' => 'symfony/unifonic-notifier',
         ],
         'vonage' => [
             'class' => Bridge\Vonage\VonageTransportFactory::class,

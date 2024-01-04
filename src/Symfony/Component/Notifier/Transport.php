@@ -77,12 +77,14 @@ final class Transport
         Bridge\RingCentral\RingCentralTransportFactory::class,
         Bridge\RocketChat\RocketChatTransportFactory::class,
         Bridge\Sendberry\SendberryTransportFactory::class,
+        Bridge\Sevenio\SevenIoTransportFactory::class,
         Bridge\SimpleTextin\SimpleTextinTransportFactory::class,
         Bridge\Sinch\SinchTransportFactory::class,
         Bridge\Slack\SlackTransportFactory::class,
         Bridge\Sms77\Sms77TransportFactory::class,
         Bridge\Smsapi\SmsapiTransportFactory::class,
         Bridge\SmsBiuras\SmsBiurasTransportFactory::class,
+        Bridge\Smsbox\SmsboxTransportFactory::class,
         Bridge\Smsc\SmscTransportFactory::class,
         Bridge\SmsFactor\SmsFactorTransportFactory::class,
         Bridge\Smsmode\SmsmodeTransportFactory::class,
@@ -98,8 +100,6 @@ final class Transport
         Bridge\Zendesk\ZendeskTransportFactory::class,
         Bridge\Zulip\ZulipTransportFactory::class,
     ];
-
-    private iterable $factories;
 
     public static function fromDsn(#[\SensitiveParameter] string $dsn, EventDispatcherInterface $dispatcher = null, HttpClientInterface $client = null): TransportInterface
     {
@@ -118,9 +118,9 @@ final class Transport
     /**
      * @param iterable<mixed, TransportFactoryInterface> $factories
      */
-    public function __construct(iterable $factories)
-    {
-        $this->factories = $factories;
+    public function __construct(
+        private iterable $factories,
+    ) {
     }
 
     public function fromStrings(#[\SensitiveParameter] array $dsns): Transports

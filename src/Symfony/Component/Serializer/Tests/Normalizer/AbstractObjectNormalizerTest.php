@@ -18,7 +18,6 @@ use Symfony\Component\PropertyInfo\PropertyInfoExtractor;
 use Symfony\Component\PropertyInfo\Type;
 use Symfony\Component\Serializer\Attribute\Context;
 use Symfony\Component\Serializer\Attribute\DiscriminatorMap;
-use Symfony\Component\Serializer\Attribute\Ignore;
 use Symfony\Component\Serializer\Attribute\SerializedName;
 use Symfony\Component\Serializer\Attribute\SerializedPath;
 use Symfony\Component\Serializer\Exception\ExtraAttributesException;
@@ -83,10 +82,12 @@ class AbstractObjectNormalizerTest extends TestCase
 
     public function testDenormalizeWithExtraAttribute()
     {
-        $this->expectException(ExtraAttributesException::class);
-        $this->expectExceptionMessage('Extra attributes are not allowed ("fooFoo" is unknown).');
         $factory = new ClassMetadataFactory(new AttributeLoader());
         $normalizer = new AbstractObjectNormalizerDummy($factory);
+
+        $this->expectException(ExtraAttributesException::class);
+        $this->expectExceptionMessage('Extra attributes are not allowed ("fooFoo" is unknown).');
+
         $normalizer->denormalize(
             ['fooFoo' => 'foo'],
             Dummy::class,
@@ -97,10 +98,12 @@ class AbstractObjectNormalizerTest extends TestCase
 
     public function testDenormalizeWithExtraAttributes()
     {
-        $this->expectException(ExtraAttributesException::class);
-        $this->expectExceptionMessage('Extra attributes are not allowed ("fooFoo", "fooBar" are unknown).');
         $factory = new ClassMetadataFactory(new AttributeLoader());
         $normalizer = new AbstractObjectNormalizerDummy($factory);
+
+        $this->expectException(ExtraAttributesException::class);
+        $this->expectExceptionMessage('Extra attributes are not allowed ("fooFoo", "fooBar" are unknown).');
+
         $normalizer->denormalize(
             ['fooFoo' => 'foo', 'fooBar' => 'bar'],
             Dummy::class,
@@ -111,9 +114,11 @@ class AbstractObjectNormalizerTest extends TestCase
 
     public function testDenormalizeWithExtraAttributesAndNoGroupsWithMetadataFactory()
     {
+        $normalizer = new AbstractObjectNormalizerWithMetadata();
+
         $this->expectException(ExtraAttributesException::class);
         $this->expectExceptionMessage('Extra attributes are not allowed ("fooFoo", "fooBar" are unknown).');
-        $normalizer = new AbstractObjectNormalizerWithMetadata();
+
         $normalizer->denormalize(
             ['fooFoo' => 'foo', 'fooBar' => 'bar', 'bar' => 'bar'],
             Dummy::class,
@@ -122,11 +127,24 @@ class AbstractObjectNormalizerTest extends TestCase
         );
     }
 
+    public function testDenormalizePlainObject()
+    {
+        $extractor = new PhpDocExtractor();
+        $normalizer = new ObjectNormalizer(null, null, null, $extractor);
+        $dummy = $normalizer->denormalize(['plainObject' => (object) ['foo' => 'bar']], DummyWithPlainObject::class);
+
+        $this->assertInstanceOf(DummyWithPlainObject::class, $dummy);
+        $this->assertInstanceOf(\stdClass::class, $dummy->plainObject);
+        $this->assertSame('bar', $dummy->plainObject->foo);
+    }
+
     public function testDenormalizeWithDuplicateNestedAttributes()
     {
+        $normalizer = new AbstractObjectNormalizerWithMetadata();
+
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('Duplicate serialized path: "one,two,three" used for properties "foo" and "bar".');
-        $normalizer = new AbstractObjectNormalizerWithMetadata();
+
         $normalizer->denormalize([], DuplicateValueNestedDummy::class, 'any');
     }
 
@@ -194,8 +212,6 @@ class AbstractObjectNormalizerTest extends TestCase
 
     public function testDenormalizeWithNestedAttributesDuplicateKeys()
     {
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('Duplicate values for key "quux" found. One value is set via the SerializedPath attribute: "one->four", the other one is set via the SerializedName attribute: "notquux".');
         $normalizer = new AbstractObjectNormalizerWithMetadata();
         $data = [
             'one' => [
@@ -203,6 +219,10 @@ class AbstractObjectNormalizerTest extends TestCase
             ],
             'quux' => 'notquux',
         ];
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Duplicate values for key "quux" found. One value is set via the SerializedPath attribute: "one->four", the other one is set via the SerializedName attribute: "notquux".');
+
         $normalizer->denormalize($data, DuplicateKeyNestedDummy::class, 'any');
     }
 
@@ -255,25 +275,29 @@ class AbstractObjectNormalizerTest extends TestCase
 
     public function testNormalizeWithNestedAttributesMixingArrayTypes()
     {
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('The element you are trying to set is already populated: "[one][two]"');
         $foobar = new AlreadyPopulatedNestedDummy();
         $foobar->foo = 'foo';
         $foobar->bar = 'bar';
         $classMetadataFactory = new ClassMetadataFactory(new AttributeLoader());
         $normalizer = new ObjectNormalizer($classMetadataFactory, new MetadataAwareNameConverter($classMetadataFactory));
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('The element you are trying to set is already populated: "[one][two]"');
+
         $normalizer->normalize($foobar, 'any');
     }
 
     public function testNormalizeWithNestedAttributesElementAlreadySet()
     {
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('The element you are trying to set is already populated: "[one][two][three]"');
         $foobar = new DuplicateValueNestedDummy();
         $foobar->foo = 'foo';
         $foobar->bar = 'bar';
         $classMetadataFactory = new ClassMetadataFactory(new AttributeLoader());
         $normalizer = new ObjectNormalizer($classMetadataFactory, new MetadataAwareNameConverter($classMetadataFactory));
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('The element you are trying to set is already populated: "[one][two][three]"');
+
         $normalizer->normalize($foobar, 'any');
     }
 
@@ -681,9 +705,10 @@ class AbstractObjectNormalizerTest extends TestCase
      */
     public function testExtraAttributesException()
     {
+        $normalizer = new ObjectNormalizer();
+
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('A class metadata factory must be provided in the constructor when setting "allow_extra_attributes" to false.');
-        $normalizer = new ObjectNormalizer();
 
         $normalizer->denormalize([], \stdClass::class, 'xml', [
             'allow_extra_attributes' => false,
@@ -837,12 +862,39 @@ class AbstractObjectNormalizerTest extends TestCase
         $this->assertSame('nested-id', $test->id);
     }
 
-    public function testNormalizeWithIgnoreAttributeAndPrivateProperties()
+    public function testNormalizeBasedOnAllowedAttributes()
     {
-        $classMetadataFactory = new ClassMetadataFactory(new AttributeLoader());
-        $serializer = new Serializer([new ObjectNormalizer($classMetadataFactory)]);
+        $normalizer = new class() extends AbstractObjectNormalizer {
+            public function getSupportedTypes(?string $format): array
+            {
+                return ['*' => false];
+            }
 
-        $this->assertSame(['foo' => 'foo'], $serializer->normalize(new ObjectDummyWithIgnoreAttributeAndPrivateProperty()));
+            protected function getAllowedAttributes($classOrObject, array $context, bool $attributesAsString = false): array
+            {
+                return ['foo'];
+            }
+
+            protected function extractAttributes(object $object, string $format = null, array $context = []): array
+            {
+                return [];
+            }
+
+            protected function getAttributeValue(object $object, string $attribute, string $format = null, array $context = []): mixed
+            {
+                return $object->$attribute;
+            }
+
+            protected function setAttributeValue(object $object, string $attribute, $value, string $format = null, array $context = []): void
+            {
+            }
+        };
+
+        $object = new Dummy();
+        $object->foo = 'foo';
+        $object->bar = 'bar';
+
+        $this->assertSame(['foo' => 'foo'], $normalizer->normalize($object));
     }
 
     public function testDenormalizeUntypedFormat()
@@ -1054,16 +1106,6 @@ class ObjectDummyWithContextAttributeSkipNullValues
     public ?string $propertyWithNullSkipNullValues = null;
 }
 
-class ObjectDummyWithIgnoreAttributeAndPrivateProperty
-{
-    public $foo = 'foo';
-
-    #[Ignore]
-    public $ignored = 'ignored';
-
-    private $private = 'private';
-}
-
 class AbstractObjectNormalizerWithMetadata extends AbstractObjectNormalizer
 {
     public function __construct()
@@ -1091,6 +1133,12 @@ class AbstractObjectNormalizerWithMetadata extends AbstractObjectNormalizer
             $object->$attribute = $value;
         }
     }
+}
+
+class DummyWithPlainObject
+{
+    /** @var object */
+    public $plainObject;
 }
 
 class ObjectWithBasicProperties

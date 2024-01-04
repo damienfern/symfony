@@ -9,9 +9,11 @@
  * file that was distributed with this source code.
  */
 
-namespace Symfony\Component\Serializer\Tests;
+namespace Symfony\Component\Notifier\Bridge\Smsbox\Enum;
 
-final class Php80Dummy
+enum Udh: int
 {
-    public false|string $canBeFalseOrString;
+    case DisabledConcat = 0;
+    case SixBytes = 1;
+    case SevenBytes = 2;
 }

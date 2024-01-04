@@ -25,7 +25,7 @@ class MemcachedAdapter extends AbstractAdapter
     /**
      * We are replacing characters that are illegal in Memcached keys with reserved characters from
      * {@see \Symfony\Contracts\Cache\ItemInterface::RESERVED_CHARACTERS} that are legal in Memcached.
-     * Note: don’t use {@see \Symfony\Component\Cache\Adapter\AbstractAdapter::NS_SEPARATOR}.
+     * Note: don’t use {@see AbstractAdapter::NS_SEPARATOR}.
      */
     private const RESERVED_MEMCACHED = " \n\r\t\v\f\0";
     private const RESERVED_PSR6 = '@()\{}/';
@@ -111,6 +111,8 @@ class MemcachedAdapter extends AbstractAdapter
                 $params = preg_replace_callback('#^memcached:(//)?(?:([^@]*+)@)?#', function ($m) use (&$username, &$password) {
                     if (!empty($m[2])) {
                         [$username, $password] = explode(':', $m[2], 2) + [1 => null];
+                        $username = rawurldecode($username);
+                        $password = null !== $password ? rawurldecode($password) : null;
                     }
 
                     return 'file:'.($m[1] ?? '');

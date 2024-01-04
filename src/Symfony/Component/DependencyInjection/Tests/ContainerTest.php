@@ -223,8 +223,8 @@ class ContainerTest extends TestCase
         $sc->set('Foo', $foo2 = new \stdClass());
 
         $this->assertSame(['service_container', 'foo', 'Foo'], $sc->getServiceIds());
-        $this->assertSame($foo1, $sc->get('foo'), '->get() returns the service for the given id, case sensitively');
-        $this->assertSame($foo2, $sc->get('Foo'), '->get() returns the service for the given id, case sensitively');
+        $this->assertSame($foo1, $sc->get('foo'), '->get() returns the service for the given id, case-sensitively');
+        $this->assertSame($foo2, $sc->get('Foo'), '->get() returns the service for the given id, case-sensitively');
     }
 
     public function testGetThrowServiceNotFoundException()
@@ -420,7 +420,6 @@ class ContainerTest extends TestCase
         $container->compile();
 
         $r = new \ReflectionMethod($container, 'getEnv');
-        $r->setAccessible(true);
         $this->assertNull($r->invoke($container, 'FOO'));
     }
 
@@ -436,7 +435,6 @@ class ContainerTest extends TestCase
         $container->compile();
 
         $r = new \ReflectionMethod($container, 'getEnv');
-        $r->setAccessible(true);
         $this->assertNull($r->invoke($container, 'FOO'));
     }
 }

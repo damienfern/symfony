@@ -47,6 +47,7 @@ class Connection
         'auth' => null,
         'serializer' => 1, // see \Redis::SERIALIZER_PHP,
         'sentinel_master' => null, // String, master to look for (optional, default is NULL meaning Sentinel support is disabled)
+        'redis_sentinel' => null, // String, alias for 'sentinel_master'
         'timeout' => 0.0, // Float, value in seconds (optional, default is 0 meaning unlimited)
         'read_timeout' => 0.0, //  Float, value in seconds (optional, default is 0 meaning unlimited)
         'retry_interval' => 0, //  Int, value in milliseconds (optional, default is 0)
@@ -78,7 +79,12 @@ class Connection
         $host = $options['host'];
         $port = $options['port'];
         $auth = $options['auth'];
-        $sentinelMaster = $options['sentinel_master'];
+
+        if (isset($options['redis_sentinel']) && isset($options['sentinel_master'])) {
+            throw new InvalidArgumentException('Cannot use both "redis_sentinel" and "sentinel_master" at the same time.');
+        }
+
+        $sentinelMaster = $options['sentinel_master'] ?? $options['redis_sentinel'] ?? null;
 
         if (null !== $sentinelMaster && !class_exists(\RedisSentinel::class) && !class_exists(Sentinel::class)) {
             throw new InvalidArgumentException('Redis Sentinel support requires ext-redis>=5.2, or ext-relay.');
@@ -166,6 +172,10 @@ class Connection
      */
     private static function initializeRedis(\Redis|Relay $redis, string $host, int $port, string|array|null $auth, array $params): \Redis|Relay
     {
+        if ($redis->isConnected()) {
+            return $redis;
+        }
+
         $connect = isset($params['persistent_id']) ? 'pconnect' : 'connect';
         $redis->{$connect}($host, $port, $params['timeout'], $params['persistent_id'], $params['retry_interval'], $params['read_timeout'], ...(\defined('Redis::SCAN_PREFIX') || \extension_loaded('relay')) ? [['stream' => $params['ssl'] ?? null]] : []);
 
@@ -196,32 +206,32 @@ class Connection
     public static function fromDsn(#[\SensitiveParameter] string $dsn, array $options = [], \Redis|Relay|\RedisCluster $redis = null): self
     {
         if (!str_contains($dsn, ',')) {
-            $parsedUrl = self::parseDsn($dsn, $options);
+            $params = self::parseDsn($dsn, $options);
 
-            if (isset($parsedUrl['host']) && 'rediss' === $parsedUrl['scheme']) {
-                $parsedUrl['host'] = 'tls://'.$parsedUrl['host'];
+            if (isset($params['host']) && 'rediss' === $params['scheme']) {
+                $params['host'] = 'tls://'.$params['host'];
             }
         } else {
             $dsns = explode(',', $dsn);
-            $parsedUrls = array_map(function ($dsn) use (&$options) {
+            $paramss = array_map(function ($dsn) use (&$options) {
                 return self::parseDsn($dsn, $options);
             }, $dsns);
 
             // Merge all the URLs, the last one overrides the previous ones
-            $parsedUrl = array_merge(...$parsedUrls);
-            $tls = 'rediss' === $parsedUrl['scheme'];
+            $params = array_merge(...$paramss);
+            $tls = 'rediss' === $params['scheme'];
 
             // Regroup all the hosts in an array interpretable by RedisCluster
-            $parsedUrl['host'] = array_map(function ($parsedUrl) use ($tls) {
-                if (!isset($parsedUrl['host'])) {
+            $params['host'] = array_map(function ($params) use ($tls) {
+                if (!isset($params['host'])) {
                     throw new InvalidArgumentException('Missing host in DSN, it must be defined when using Redis Cluster.');
                 }
                 if ($tls) {
-                    $parsedUrl['host'] = 'tls://'.$parsedUrl['host'];
+                    $params['host'] = 'tls://'.$params['host'];
                 }
 
-                return $parsedUrl['host'].':'.($parsedUrl['port'] ?? 6379);
-            }, $parsedUrls, $dsns);
+                return $params['host'].':'.($params['port'] ?? 6379);
+            }, $paramss, $dsns);
         }
 
         if ($invalidOptions = array_diff(array_keys($options), array_keys(self::DEFAULT_OPTIONS), ['host', 'port'])) {
@@ -236,15 +246,15 @@ class Connection
             };
         }
 
-        $pass = '' !== ($parsedUrl['pass'] ?? '') ? urldecode($parsedUrl['pass']) : null;
-        $user = '' !== ($parsedUrl['user'] ?? '') ? urldecode($parsedUrl['user']) : null;
+        $pass = '' !== ($params['pass'] ?? '') ? rawurldecode($params['pass']) : null;
+        $user = '' !== ($params['user'] ?? '') ? rawurldecode($params['user']) : null;
         $options['auth'] ??= null !== $pass && null !== $user ? [$user, $pass] : ($pass ?? $user);
 
-        if (isset($parsedUrl['query'])) {
-            parse_str($parsedUrl['query'], $query);
+        if (isset($params['query'])) {
+            parse_str($params['query'], $query);
 
             if (isset($query['host'])) {
-                $tls = 'rediss' === $parsedUrl['scheme'];
+                $tls = 'rediss' === $params['scheme'];
                 $tcpScheme = $tls ? 'tls' : 'tcp';
 
                 if (!\is_array($hosts = $query['host'])) {
@@ -262,20 +272,20 @@ class Connection
                         $hosts[$host] = ['scheme' => 'unix', 'host' => substr($host, 0, $i)] + $parameters;
                     }
                 }
-                $parsedUrl['host'] = array_values($hosts);
+                $params['host'] = array_values($hosts);
             }
         }
 
-        if (isset($parsedUrl['host'])) {
-            $options['host'] = $parsedUrl['host'] ?? $options['host'];
-            $options['port'] = $parsedUrl['port'] ?? $options['port'];
+        if (isset($params['host'])) {
+            $options['host'] = $params['host'] ?? $options['host'];
+            $options['port'] = $params['port'] ?? $options['port'];
 
-            $pathParts = explode('/', rtrim($parsedUrl['path'] ?? '', '/'));
+            $pathParts = explode('/', rtrim($params['path'] ?? '', '/'));
             $options['stream'] = $pathParts[1] ?? $options['stream'];
             $options['group'] = $pathParts[2] ?? $options['group'];
             $options['consumer'] = $pathParts[3] ?? $options['consumer'];
         } else {
-            $options['host'] = $parsedUrl['path'];
+            $options['host'] = $params['path'];
             $options['port'] = 0;
         }
 
@@ -303,22 +313,22 @@ class Connection
             return 'file:'.($m[1] ?? '');
         }, $url);
 
-        if (false === $parsedUrl = parse_url($url)) {
+        if (false === $params = parse_url($url)) {
             throw new InvalidArgumentException('The given Redis DSN is invalid.');
         }
 
         if (null !== $auth) {
-            unset($parsedUrl['user']); // parse_url thinks //0@localhost/ is a username of "0"! doh!
-            $parsedUrl += ($auth ?? []); // But don't worry as $auth array will have user, user/pass or pass as needed
+            unset($params['user']); // parse_url thinks //0@localhost/ is a username of "0"! doh!
+            $params += ($auth ?? []); // But don't worry as $auth array will have user, user/pass or pass as needed
         }
 
-        if (isset($parsedUrl['query'])) {
-            parse_str($parsedUrl['query'], $dsnOptions);
+        if (isset($params['query'])) {
+            parse_str($params['query'], $dsnOptions);
             $options = array_merge($options, $dsnOptions);
         }
-        $parsedUrl['scheme'] = $scheme;
+        $params['scheme'] = $scheme;
 
-        return $parsedUrl;
+        return $params;
     }
 
     private function claimOldPendingMessages(): void

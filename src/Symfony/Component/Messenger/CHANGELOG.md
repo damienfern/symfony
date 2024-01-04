@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+7.1
+---
+
+ * Add option `redis_sentinel` as an alias for `sentinel_master`
+ * Add `--all` option to the `messenger:consume` command
+ * Make `#[AsMessageHandler]` final
+
 7.0
 ---
 
@@ -95,7 +102,6 @@ CHANGELOG
  * Added factory methods `DelayStamp::delayFor(\DateInterval)` and `DelayStamp::delayUntil(\DateTimeInterface)`.
  * Removed the exception when dispatching a message with a `DispatchAfterCurrentBusStamp` and not in a context of another dispatch call
  * Added `WorkerMessageRetriedEvent`
- * Added `WorkerMessageReceivedEvent::setEnvelope()` and made event mutable
 
 5.1.0
 -----

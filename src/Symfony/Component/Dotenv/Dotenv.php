@@ -25,7 +25,7 @@ use Symfony\Component\Process\Process;
  */
 final class Dotenv
 {
-    public const VARNAME_REGEX = '(?i:[A-Z][A-Z0-9_]*+)';
+    public const VARNAME_REGEX = '(?i:_?[A-Z][A-Z0-9_]*+)';
     public const STATE_VARNAME = 0;
     public const STATE_VALUE = 1;
 
@@ -100,6 +100,8 @@ final class Dotenv
      */
     public function loadEnv(string $path, string $envKey = null, string $defaultEnv = 'dev', array $testEnvs = ['test'], bool $overrideExistingVars = false): void
     {
+        $this->populatePath($path);
+
         $k = $envKey ?? $this->envKey;
 
         if (is_file($path) || !is_file($p = "$path.dist")) {
@@ -144,6 +146,7 @@ final class Dotenv
         $k = $this->envKey;
 
         if (\is_array($env) && ($overrideExistingVars || !isset($env[$k]) || ($_SERVER[$k] ?? $_ENV[$k] ?? $env[$k]) === $env[$k])) {
+            $this->populatePath($path);
             $this->populate($env, $overrideExistingVars);
         } else {
             $this->loadEnv($path, $k, $defaultEnv, $testEnvs, $overrideExistingVars);
@@ -341,8 +344,8 @@ final class Dotenv
                 ++$this->cursor;
                 $value = str_replace(['\\"', '\r', '\n'], ['"', "\r", "\n"], $value);
                 $resolvedValue = $value;
-                $resolvedValue = $this->resolveVariables($resolvedValue, $loadedVars);
                 $resolvedValue = $this->resolveCommands($resolvedValue, $loadedVars);
+                $resolvedValue = $this->resolveVariables($resolvedValue, $loadedVars);
                 $resolvedValue = str_replace('\\\\', '\\', $resolvedValue);
                 $v .= $resolvedValue;
             } else {
@@ -364,8 +367,8 @@ final class Dotenv
                 }
                 $value = rtrim($value);
                 $resolvedValue = $value;
-                $resolvedValue = $this->resolveVariables($resolvedValue, $loadedVars);
                 $resolvedValue = $this->resolveCommands($resolvedValue, $loadedVars);
+                $resolvedValue = $this->resolveVariables($resolvedValue, $loadedVars);
                 $resolvedValue = str_replace('\\\\', '\\', $resolvedValue);
 
                 if ($resolvedValue === $value && preg_match('/\s+/', $value)) {
@@ -463,7 +466,7 @@ final class Dotenv
                 throw $this->createFormatException(sprintf('Issue expanding a command (%s)', $process->getErrorOutput()));
             }
 
-            return preg_replace('/[\r\n]+$/', '', $process->getOutput());
+            return rtrim($process->getOutput(), "\n\r");
         }, $value);
     }
 
@@ -554,6 +557,15 @@ final class Dotenv
             }
 
             $this->populate($this->parse(file_get_contents($path), $path), $overrideExistingVars);
+        }
+    }
+
+    private function populatePath(string $path): void
+    {
+        $_ENV['SYMFONY_DOTENV_PATH'] = $_SERVER['SYMFONY_DOTENV_PATH'] = $path;
+
+        if ($this->usePutenv) {
+            putenv('SYMFONY_DOTENV_PATH='.$path);
         }
     }
 }

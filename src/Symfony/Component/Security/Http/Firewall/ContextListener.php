@@ -234,7 +234,7 @@ class ContextListener extends AbstractListener
             } catch (UnsupportedUserException) {
                 // let's try the next user provider
             } catch (UserNotFoundException $e) {
-                $this->logger?->warning('Username could not be found in the selected user provider.', ['username' => $e->getUserIdentifier(), 'provider' => $provider::class]);
+                $this->logger?->info('Username could not be found in the selected user provider.', ['username' => $e->getUserIdentifier(), 'provider' => $provider::class]);
 
                 $userNotFoundByProvider = true;
             }
@@ -283,7 +283,7 @@ class ContextListener extends AbstractListener
         $refreshedUser = $refreshedToken->getUser();
 
         if ($originalUser instanceof EquatableInterface) {
-            return !(bool) $originalUser->isEqualTo($refreshedUser);
+            return !$originalUser->isEqualTo($refreshedUser);
         }
 
         if ($originalUser instanceof PasswordAuthenticatedUserInterface || $refreshedUser instanceof PasswordAuthenticatedUserInterface) {

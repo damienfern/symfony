@@ -40,6 +40,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Exception\LogicException;
 use Symfony\Component\DependencyInjection\Loader\ClosureLoader;
+use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\DependencyInjection\ParameterBag\EnvPlaceholderParameterBag;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -51,6 +52,7 @@ use Symfony\Component\HtmlSanitizer\HtmlSanitizerInterface;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\RetryableHttpClient;
 use Symfony\Component\HttpClient\ScopingHttpClient;
+use Symfony\Component\HttpFoundation\IpUtils;
 use Symfony\Component\HttpKernel\DependencyInjection\LoggerPass;
 use Symfony\Component\HttpKernel\Fragment\FragmentUriGeneratorInterface;
 use Symfony\Component\Messenger\Bridge\AmazonSqs\Transport\AmazonSqsTransportFactory;
@@ -1434,6 +1436,12 @@ abstract class FrameworkExtensionTestCase extends TestCase
         $this->assertEquals($container->getDefinition('serializer.normalizer.object')->getArgument(6)['max_depth_handler'], new Reference('my.max.depth.handler'));
     }
 
+    public function testSerializerWithoutTranslator()
+    {
+        $container = $this->createContainerFromFile('serializer_without_translator');
+        $this->assertFalse($container->hasDefinition('serializer.normalizer.translatable'));
+    }
+
     public function testRegisterSerializerExtractor()
     {
         $container = $this->createContainerFromFile('full');
@@ -1687,7 +1695,7 @@ abstract class FrameworkExtensionTestCase extends TestCase
                     ->replaceArgument(0, $expectedSeed)
                     ->replaceArgument(1, 12),
                 (new ChildDefinition('cache.adapter.redis'))
-                    ->replaceArgument(0, new Reference('.cache_connection.kYdiLgf'))
+                    ->replaceArgument(0, new Reference('.cache_connection.'.(\count((new \ReflectionMethod(ContainerConfigurator::class, 'extension'))->getParameters()) > 2 ? 'U5HliuY' : 'kYdiLgf')))
                     ->replaceArgument(1, $expectedSeed)
                     ->replaceArgument(2, 12),
             ],
@@ -2256,6 +2264,13 @@ abstract class FrameworkExtensionTestCase extends TestCase
         $this->assertEquals(new Reference('app.another_bus'), $container->getDefinition('notifier.channel.chat')->getArgument(1));
         $this->assertEquals(new Reference('app.another_bus'), $container->getDefinition('notifier.channel.email')->getArgument(1));
         $this->assertEquals(new Reference('app.another_bus'), $container->getDefinition('notifier.channel.sms')->getArgument(1));
+    }
+
+    public function testTrustedProxiesWithPrivateRanges()
+    {
+        $container = $this->createContainerFromFile('trusted_proxies_private_ranges');
+
+        $this->assertSame(IpUtils::PRIVATE_SUBNETS, array_map('trim', explode(',', $container->getParameter('kernel.trusted_proxies'))));
     }
 
     public function testWebhook()

@@ -83,16 +83,16 @@ class Connection implements ResetInterface
 
     public static function buildConfiguration(#[\SensitiveParameter] string $dsn, array $options = []): array
     {
-        if (false === $components = parse_url($dsn)) {
+        if (false === $params = parse_url($dsn)) {
             throw new InvalidArgumentException('The given Doctrine Messenger DSN is invalid.');
         }
 
         $query = [];
-        if (isset($components['query'])) {
-            parse_str($components['query'], $query);
+        if (isset($params['query'])) {
+            parse_str($params['query'], $query);
         }
 
-        $configuration = ['connection' => $components['host']];
+        $configuration = ['connection' => $params['host']];
         $configuration += $query + $options + static::DEFAULT_OPTIONS;
 
         $configuration['auto_setup'] = filter_var($configuration['auto_setup'], \FILTER_VALIDATE_BOOL);
@@ -122,7 +122,7 @@ class Connection implements ResetInterface
     public function send(string $body, array $headers, int $delay = 0): string
     {
         $now = new \DateTimeImmutable('UTC');
-        $availableAt = $now->modify(sprintf('+%d seconds', $delay / 1000));
+        $availableAt = $now->modify(sprintf('%+d seconds', $delay / 1000));
 
         $queryBuilder = $this->driverConnection->createQueryBuilder()
             ->insert($this->configuration['table_name'])
@@ -179,7 +179,7 @@ class Connection implements ResetInterface
             if ($this->driverConnection->getDatabasePlatform() instanceof OraclePlatform) {
                 $query = $this->createQueryBuilder('w')
                     ->where('w.id IN ('.str_replace('SELECT a.* FROM', 'SELECT a.id FROM', $sql).')')
-                    ->setParameters($query->getParameters());
+                    ->setParameters($query->getParameters(), $query->getParameterTypes());
 
                 $sql = $query->getSQL();
             }
