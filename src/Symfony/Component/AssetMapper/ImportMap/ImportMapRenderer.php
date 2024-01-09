@@ -50,6 +50,7 @@ class ImportMapRenderer
         $modulePreloads = [];
         $cssLinks = [];
         $polyfillPath = null;
+
         foreach ($importMapData as $importName => $data) {
             $path = $data['path'];
 

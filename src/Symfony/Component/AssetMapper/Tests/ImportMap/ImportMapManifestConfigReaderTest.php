@@ -45,25 +45,29 @@ class ImportMapManifestConfigReaderTest extends TestCase
         $manifestJson = <<<'JSON'
 {
   "assets/main.css": {
-    "file": "main.css",
+    "file": "main.9ca0e350.css",
     "src": "assets/main.css"
   },
   "assets/main.ts": {
     "assets": [
-      "logo.svg"
+      "logo.277e0e97.svg"
     ],
     "css": [
-      "main.css"
+      "main.9ca0e350.css"
     ],
     "dynamicImports": [
-      "assets/views/AboutView.vue"
+      "assets/views/AboutView.vue",
+      "assets/views/ContactView.vue"
     ],
-    "file": "main.js",
+    "file": "main.384b8127.js",
     "isEntry": true,
     "src": "assets/main.ts"
   },
   "assets/views/AboutView.vue": {
-    "file": "AboutView.js",
+    "css": [
+      "AboutView.fe0787ef.css"
+    ],
+    "file": "AboutView.c755ff27.js",
     "imports": [
       "assets/main.ts"
     ],
@@ -82,34 +86,108 @@ JSON;
         $this->assertInstanceOf(ImportMapEntries::class, $entries);
         /** @var ImportMapEntry[] $allEntries */
         $allEntries = iterator_to_array($entries);
+
         $this->assertNotEmpty($allEntries);
-        $this->assertCount(3, $allEntries);
+        $this->assertCount(4, $allEntries);
 
         $typeCssEntry = $allEntries[0];
         $this->assertFalse($typeCssEntry->isRemotePackage());
-        $this->assertSame('./main.css', $typeCssEntry->importName);
-        $this->assertSame('main.css', $typeCssEntry->path);
+        $this->assertSame('main.9ca0e350.css', $typeCssEntry->importName);
+        $this->assertSame('main.9ca0e350.css', $typeCssEntry->path);
         $this->assertSame('css', $typeCssEntry->type->value);
 
         $localPackageEntry = $allEntries[1];
         $this->assertFalse($localPackageEntry->isRemotePackage());
-        $this->assertSame('./main.js', $localPackageEntry->importName);
-        $this->assertSame('main.js', $localPackageEntry->path);
+        $this->assertSame('main.384b8127.js', $localPackageEntry->importName);
+        $this->assertSame('main.384b8127.js', $localPackageEntry->path);
         $this->assertSame('js', $localPackageEntry->type->value);
         $this->assertTrue($localPackageEntry->isEntrypoint);
 
-        $localPackage = $allEntries[2];
+        $localPackageAppEntry = $allEntries[2];
+        $this->assertFalse($localPackageAppEntry->isRemotePackage());
+        $this->assertSame('app', $localPackageAppEntry->importName);
+        $this->assertSame('main.384b8127.js', $localPackageAppEntry->path);
+        $this->assertSame('js', $localPackageAppEntry->type->value);
+        $this->assertTrue($localPackageAppEntry->isEntrypoint);
+
+        $localPackage = $allEntries[3];
         $this->assertFalse($localPackage->isRemotePackage());
-        $this->assertSame('./AboutView.js', $localPackage->importName);
-        $this->assertSame('AboutView.js', $localPackage->path);
+        $this->assertSame('AboutView.c755ff27.js', $localPackage->importName);
+        $this->assertSame('AboutView.c755ff27.js', $localPackage->path);
         $this->assertSame('js', $localPackage->type->value);
         $this->assertFalse($localPackage->isEntrypoint);
     }
-//
-//    public function testWriteEntries()
-//    {
-        // TODO: Implement testWriteEntries() method.
-//    }
+
+    public function testWriteEntries()
+    {
+
+        $manifestJson = <<<'JSON'
+{
+  "assets/assets/logo.svg": {
+    "file": "logo.277e0e97.svg",
+    "src": "assets/assets/logo.svg"
+  },
+  "assets/main.css": {
+    "file": "main.9ca0e350.css",
+    "src": "assets/main.css"
+  },
+  "assets/main.ts": {
+    "assets": [
+      "logo.277e0e97.svg"
+    ],
+    "css": [
+      "main.9ca0e350.css"
+    ],
+    "dynamicImports": [
+      "assets/views/AboutView.vue",
+      "assets/views/ContactView.vue"
+    ],
+    "file": "main.384b8127.js",
+    "isEntry": true,
+    "src": "assets/main.ts"
+  },
+  "assets/views/AboutView.css": {
+    "file": "AboutView.fe0787ef.css",
+    "src": "assets/views/AboutView.css"
+  },
+  "assets/views/AboutView.vue": {
+    "css": [
+      "AboutView.fe0787ef.css"
+    ],
+    "file": "AboutView.c755ff27.js",
+    "imports": [
+      "assets/main.ts"
+    ],
+    "isDynamicEntry": true,
+    "src": "assets/views/AboutView.vue"
+  },
+  "assets/views/ContactView.css": {
+    "file": "ContactView.80bdbd08.css",
+    "src": "assets/views/ContactView.css"
+  },
+  "assets/views/ContactView.vue": {
+    "css": [
+      "ContactView.80bdbd08.css"
+    ],
+    "file": "ContactView.06bda5cf.js",
+    "imports": [
+      "assets/main.ts"
+    ],
+    "isDynamicEntry": true,
+    "src": "assets/views/ContactView.vue"
+  }
+}
+JSON;
+
+        file_put_contents(__DIR__ . '/../Fixtures/importmaps_for_writing_from_manifest/manifest.json', $manifestJson);
+        $reader = new ImportMapManifestConfigReader(
+            __DIR__ . '/../Fixtures/importmaps_for_writing_from_manifest/manifest.json'
+        );
+        $entries = $reader->getEntries();
+        // expect to throw Exception because manifest.json is not writable
+        $this->expectException(\LogicException::class);
+        $reader->writeEntries($entries);
+    }
 
     /**
      * @dataProvider getPathToFilesystemPathTests
