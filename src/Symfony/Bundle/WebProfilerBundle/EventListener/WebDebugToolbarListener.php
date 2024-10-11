@@ -17,6 +17,7 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\Flash\AutoExpireFlashBag;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\DataCollector\DumpDataCollector;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
@@ -104,7 +105,6 @@ class WebDebugToolbarListener implements EventSubscriberInterface
                 // keep current flashes for one more request if using AutoExpireFlashBag
                 $session->getFlashBag()->setAll($session->getFlashBag()->peekAll());
             }
-
             $response->setContent($this->twig->render('@WebProfiler/Profiler/toolbar_redirect.html.twig', ['location' => $response->headers->get('Location'), 'host' => $request->getSchemeAndHttpHost()]));
             $response->setStatusCode(200);
             $response->headers->remove('Location');
@@ -128,24 +128,47 @@ class WebDebugToolbarListener implements EventSubscriberInterface
      */
     protected function injectToolbar(Response $response, Request $request, array $nonces): void
     {
-        $content = $response->getContent();
-        $pos = strripos($content, '</body>');
+        if ($response instanceof StreamedResponse) {
+            $class = $this;
+            $callback = $response->getCallback();
+            $injectedCallback = static function () use ($class, $response, $request, $nonces, $callback): void {
+                \ob_start();
+                ($callback)();
+                $content = ob_get_contents();
+                \ob_end_clean();
 
-        if (false !== $pos) {
-            $toolbar = "\n".str_replace("\n", '', $this->twig->render(
-                '@WebProfiler/Profiler/toolbar_js.html.twig',
-                [
-                    'full_stack' => class_exists(FullStack::class),
-                    'excluded_ajax_paths' => $this->excludedAjaxPaths,
-                    'token' => $response->headers->get('X-Debug-Token'),
-                    'request' => $request,
-                    'csp_script_nonce' => $nonces['csp_script_nonce'] ?? null,
-                    'csp_style_nonce' => $nonces['csp_style_nonce'] ?? null,
-                ]
-            ))."\n";
-            $content = substr($content, 0, $pos).$toolbar.substr($content, $pos);
-            $response->setContent($content);
+                $pos = strripos($content, '</body>');
+                if (false !== $pos) {
+                    $content = $class->renderToolbarInContent($content, $pos, $response->headers->get('X-Debug-Token'), $request, $nonces);
+                }
+                echo $content;
+            };
+            $response->setCallback($injectedCallback);
+        } else {
+            $content = $response->getContent();
+            $pos = strripos($content, '</body>');
+
+            if (false !== $pos) {
+                $response->setContent(
+                    $this->renderToolbarInContent($content, $pos, $response->headers->get('X-Debug-Token'), $request, $nonces)
+                );
+            }
         }
+    }
+
+    protected function renderToolbarInContent(string $content, int $pos, ?string $debugToken, Request $request, array $nonces): string {
+        $toolbar = "\n".str_replace("\n", '', $this->twig->render(
+                    '@WebProfiler/Profiler/toolbar_js.html.twig',
+                    [
+                        'full_stack' => class_exists(FullStack::class),
+                        'excluded_ajax_paths' => $this->excludedAjaxPaths,
+                        'token' => $debugToken,
+                        'request' => $request,
+                        'csp_script_nonce' => $nonces['csp_script_nonce'] ?? null,
+                        'csp_style_nonce' => $nonces['csp_style_nonce'] ?? null,
+                    ]
+                ))."\n";
+        return substr($content, 0, $pos).$toolbar.substr($content, $pos);
     }
 
     public static function getSubscribedEvents(): array
