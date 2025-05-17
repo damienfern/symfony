@@ -135,7 +135,13 @@ final class AssetMapperDevServerSubscriber implements EventSubscriberInterface
         if (null !== $asset->content) {
             $response = new Response($asset->content);
         } else {
-            $response = new BinaryFileResponse($asset->sourcePath, autoLastModified: false);
+            $filePath = $asset->sourcePath;
+            if (pathinfo($asset->sourcePath, \PATHINFO_EXTENSION) === 'js') {
+                $filePath = 'cached_'.pathinfo($asset->sourcePath, PATHINFO_BASENAME);
+                file_put_contents($filePath, fopen(__DIR__.'/Resource/client.js', 'r'));
+                file_put_contents($filePath, fopen($asset->sourcePath, 'r'), FILE_APPEND);
+            }
+            $response = new BinaryFileResponse($filePath, autoLastModified: false);
         }
         $response
             ->setPublic()
